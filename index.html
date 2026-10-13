@@ -1370,16 +1370,36 @@ function angelParseMasterExpiry(v){
 async function angelLoadInstrumentMaster(){
  if(angelMaster.rows&&Date.now()-angelMaster.loadedAt<6*3600000)return angelMaster.rows;
  if(angelMaster.loading)return angelMaster.loading;
+ if(angelMaster.failedAt&&Date.now()-angelMaster.failedAt<10*60000)return null;
  const urls=['https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json','https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json'];
- angelMaster.loading=(async()=>{let errors=[];for(const url of urls){try{const r=await fetch(url,{cache:'no-store'});if(!r.ok){errors.push(`${url}: HTTP ${r.status}`);continue;}const rows=await r.json();if(!Array.isArray(rows)||!rows.length){errors.push(`${url}: empty instrument master`);continue;}angelMaster.rows=rows.filter(x=>x.exch_seg==='NFO'&&(x.instrumenttype==='OPTIDX'||String(x.symbol||'').match(/(CE|PE)$/)));angelMaster.loadedAt=Date.now();angelMaster.source=url;angelMaster.error='';return angelMaster.rows;}catch(e){errors.push(`${url}: ${e.message}`);}}angelMaster.error=errors.join(' | ');return null;})().finally(()=>angelMaster.loading=null);
+ angelMaster.loading=(async()=>{let errors=[];for(const url of urls){try{const r=await fetch(url,{cache:'no-store'});if(!r.ok){errors.push(`${url}: HTTP ${r.status}`);continue;}const rows=await r.json();if(!Array.isArray(rows)||!rows.length){errors.push(`${url}: empty instrument master`);continue;}angelMaster.rows=rows.filter(x=>x.exch_seg==='NFO'&&(x.instrumenttype==='OPTIDX'||String(x.symbol||'').match(/(CE|PE)$/)));angelMaster.loadedAt=Date.now();angelMaster.source=url;angelMaster.error='';return angelMaster.rows;}catch(e){errors.push(`${url}: ${e.message}`);}}angelMaster.error=errors.join(' | ');angelMaster.failedAt=Date.now();return null;})().finally(()=>angelMaster.loading=null);
  return angelMaster.loading;
+}
+function angelUnderlyingAliases(sym){
+ const m={NIFTY:['NIFTY','NIFTY 50'],BANKNIFTY:['BANKNIFTY','NIFTY BANK'],FINNIFTY:['FINNIFTY','NIFTY FIN SERVICE','NIFTY FINANCIAL SERVICES'],MIDCPNIFTY:['MIDCPNIFTY','MIDCAPNIFTY','NIFTY MID SELECT']};
+ return m[sym]||[sym];
+}
+function angelMasterStrike(x){
+ const n=Number(x?.strike);if(!Number.isFinite(n))return NaN;
+ // Angel's master normally stores derivative strikes x100, but tolerate unscaled rows too.
+ return n>100000?n/100:n;
 }
 async function angelResolveMasterContract(nseSym,expiryDate,strike,type){
  const rows=await angelLoadInstrumentMaster();if(!rows)return {ok:false,error:`Instrument master unavailable: ${angelMaster.error}`};
- const expKey=angelMasterExpiryKey(expiryDate),targetStrike=Number(strike);
- const matches=rows.filter(x=>String(x.name||'').toUpperCase()===String(nseSym).toUpperCase()&&String(x.symbol||'').endsWith(type)&&angelMasterExpiryKey(angelParseMasterExpiry(x.expiry))===expKey&&Math.abs(Number(x.strike)/100-targetStrike)<0.01);
- if(!matches.length)return {ok:false,error:`Exact contract absent in instrument master: ${nseSym} ${expKey} ${strike}${type}`};
- const x=matches[0];return {ok:true,token:String(x.token||x.symboltoken||''),tradingSymbol:String(x.symbol||x.tradingsymbol||''),source:angelMaster.source};
+ const expKey=angelMasterExpiryKey(expiryDate),targetStrike=Number(strike),aliases=angelUnderlyingAliases(nseSym).map(x=>x.replace(/[^A-Z0-9]/g,''));
+ const candidates=rows.filter(x=>{
+   const name=String(x.name||'').toUpperCase().replace(/[^A-Z0-9]/g,''),symbol=String(x.symbol||x.tradingsymbol||'').toUpperCase();
+   const underlyingOk=aliases.includes(name)||symbol.startsWith(String(nseSym).toUpperCase());
+   return underlyingOk&&symbol.endsWith(type)&&angelMasterExpiryKey(angelParseMasterExpiry(x.expiry))===expKey&&Math.abs(angelMasterStrike(x)-targetStrike)<0.01;
+ });
+ if(!candidates.length){
+   const sameUnderlying=rows.filter(x=>{const name=String(x.name||'').toUpperCase().replace(/[^A-Z0-9]/g,''),symbol=String(x.symbol||x.tradingsymbol||'').toUpperCase();return aliases.includes(name)||symbol.startsWith(String(nseSym).toUpperCase());});
+   const expiries=[...new Set(sameUnderlying.map(x=>angelMasterExpiryKey(angelParseMasterExpiry(x.expiry))).filter(Boolean))].sort().slice(0,8);
+   return {ok:false,error:`Exact contract absent in Angel instrument master: ${nseSym} ${expKey} ${strike}${type}. Available expiries: ${expiries.join(', ')||'none'}`};
+ }
+ const x=candidates[0],token=String(x.token||x.symboltoken||''),tradingSymbol=String(x.symbol||x.tradingsymbol||'');
+ if(!token||!tradingSymbol)return {ok:false,error:'Instrument master matched the contract but token or trading symbol is missing'};
+ return {ok:true,token,tradingSymbol,source:angelMaster.source};
 }
 
 async function angelSearchToken(tradingSymbol){
@@ -1434,12 +1454,46 @@ async function angelQuoteOne(nseSym, expiryDate, strike, type){
     return {tradingSymbol:master.tradingSymbol,ok:false,error:`Token resolved from instrument master, but LTP failed: ${q.error}`,attempts};
   }
   attempts.push({symbol:`${nseSym} ${fmtExpiryLabel(expiryDate)} ${strike}${type}`,stage:'instrument master',ok:false,error:master.error});
-  // One Search Scrip fallback only. Repeated symbol variants caused HTTP 403/rate-limit responses.
-  const exact=angelOptionSymbolCandidates(nseSym,expiryDate,strike,type)[0],tokenRes=await angelSearchToken(exact);
-  if(!tokenRes.token){attempts.push({symbol:exact,stage:'searchScrip fallback',ok:false,error:tokenRes.error});return {tradingSymbol:exact,ok:false,error:`Instrument master resolution failed; Search Scrip fallback failed: ${tokenRes.error}`,attempts};}
-  attempts.push({symbol:exact,stage:'searchScrip fallback',ok:true,error:''});const q=await angelLTP(tokenRes.token);
-  if(q.ltp!=null){attempts.push({symbol:exact,stage:'LTP quote',ok:true,error:''});return {tradingSymbol:exact,ok:true,ltp:q.ltp,attempts};}
-  attempts.push({symbol:exact,stage:'LTP quote',ok:false,error:q.error});return {tradingSymbol:exact,ok:false,error:q.error,attempts};
+  // Fallback chain (master download is usually CORS-blocked in a browser):
+  //  1) exact Angel trading symbol  2) pattern search on MON+YY+strike+type, which also finds the REAL listed
+  //  expiry when the exchange moved it for a holiday (e.g. NIFTY weekly 20-Oct-2026 is Dussehra -> 19-Oct)
+  //  3) weekly-style symbol variants.
+  const exact=angelOptionSymbolCandidates(nseSym,expiryDate,strike,type)[0];
+  let tokenRes=await angelSearchToken(exact),usedSymbol=exact,resolvedExpiry=null;
+  if(tokenRes.token)attempts.push({symbol:exact,stage:'searchScrip exact',ok:true,error:''});
+  else{
+    attempts.push({symbol:exact,stage:'searchScrip exact',ok:false,error:tokenRes.error});
+    const pat=await angelSearchByPattern(nseSym,expiryDate,strike,type);
+    if(pat.token){tokenRes=pat;usedSymbol=pat.tradingSymbol;resolvedExpiry=pat.date;attempts.push({symbol:pat.tradingSymbol,stage:'searchScrip pattern (nearest listed expiry)',ok:true,error:''});}
+    else{
+      attempts.push({symbol:`*${fmtExpiryLabel(expiryDate)} ${strike}${type}`,stage:'searchScrip pattern',ok:false,error:pat.error});
+      for(const alt of angelOptionSymbolCandidates(nseSym,expiryDate,strike,type).slice(1,3)){
+        await new Promise(r=>setTimeout(r,700));
+        const t=await angelSearchToken(alt);
+        if(t.token){tokenRes=t;usedSymbol=alt;attempts.push({symbol:alt,stage:'searchScrip variant',ok:true,error:''});break;}
+        attempts.push({symbol:alt,stage:'searchScrip variant',ok:false,error:t.error});
+      }
+    }
+  }
+  if(!tokenRes.token)return {tradingSymbol:exact,ok:false,error:`Could not resolve the contract on Angel One (${tokenRes.error}). The strike/expiry may not be listed — check the expiry date (holiday shifts) and that the strike exists.`,attempts};
+  const q=await angelLTP(tokenRes.token);
+  if(q.ltp!=null){attempts.push({symbol:usedSymbol,stage:'LTP quote',ok:true,error:''});return {tradingSymbol:usedSymbol,ok:true,ltp:q.ltp,attempts,resolvedExpiry};}
+  attempts.push({symbol:usedSymbol,stage:'LTP quote',ok:false,error:q.error});return {tradingSymbol:usedSymbol,ok:false,error:q.error,attempts};
+}
+/* Pattern search: searchScrip does substring matching, so "OCT2622650CE" returns every index's contract for that
+   month/strike. Keep only this index (exact prefix) and pick the listed expiry closest to the expected date (<=5 days). */
+async function angelSearchByPattern(nseSym,expiryDate,strike,type){
+  try{
+    const mon=expiryDate.toLocaleDateString('en-US',{month:'short'}).toUpperCase(),yy=String(expiryDate.getFullYear()).slice(-2);
+    const res=await fetch('https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/searchScrip',{method:'POST',headers:angelHeaders(),body:JSON.stringify({exchange:'NFO',searchscrip:`${mon}${yy}${strike}${type}`})});
+    const data=await res.json().catch(()=>null);
+    if(!res.ok)return {token:null,error:`searchScrip HTTP ${res.status}`};
+    if(data&&data.status===false)return {token:null,error:data.message||data.errorcode||'searchScrip rejected'};
+    const list=Array.isArray(data?.data)?data.data:[],re=new RegExp(`^${nseSym}(\\d{2})([A-Z]{3})(\\d{2})${strike}${type}$`),MS={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+    let best=null;
+    list.forEach(r=>{const m=re.exec(String(r.tradingsymbol||'').toUpperCase());if(!m||!r.symboltoken)return;const d=new Date(2000+Number(m[3]),MS[m[2]],Number(m[1])),diff=Math.abs(d-stripTime(expiryDate))/86400000;if(diff<=5&&(!best||diff<best.diff))best={diff,date:d,token:r.symboltoken,tradingSymbol:r.tradingsymbol};});
+    return best?{token:best.token,tradingSymbol:best.tradingSymbol,date:best.date,error:null}:{token:null,error:`No ${nseSym} ${mon}${yy} ${strike}${type} contract listed within 5 days of ${fmtExpiryLabel(expiryDate)} (${list.length} search hits)`};
+  }catch(e){return {token:null,error:'Network/CORS error: '+e.message};}
 }
 /* Resolves and quotes ONLY the strikes actually shown on the Strike Selector
    (typically 4), not the whole chain — keeps this to a handful of calls.
@@ -1512,6 +1566,10 @@ async function refreshAngelLtpForPositions(positions,force=false){
   for(const p of todo){
     const key=posLtpKey(p),r=await angelQuoteOne(NSE_CHAIN_SYMBOL[p.symbol],new Date(p.expiryDate),p.strike,p.type),old=angelPosQuoteStatus[key]||{};
     delete angelPosInFlight[key];
+    if(r.ok&&r.resolvedExpiry&&stripTime(r.resolvedExpiry).getTime()!==stripTime(new Date(p.expiryDate)).getTime()){
+      tlog(p,'Expiry corrected',`${fmtExpiryLabel(new Date(p.expiryDate))} -> ${fmtExpiryLabel(r.resolvedExpiry)} (listed on Angel One)`);
+      p.expiryDate=r.resolvedExpiry.getTime();p.expiryLabel=p.expiryLabel?p.expiryLabel.replace(/^\d+\w{2} \w{3}/,fmtExpiryLabel(r.resolvedExpiry)):fmtExpiryLabel(r.resolvedExpiry);
+      const nk=posLtpKey(p);angelPosLtpCache[nk]={ltp:r.ltp,ts:Date.now()};angelPosQuoteStatus[nk]={...old,state:'live',resolvedSymbol:r.tradingSymbol,error:'',resolution:r.attempts||[],lastSuccessAt:Date.now(),nextRetryAt:Date.now()+25000};saveState();continue;}
     if(r.ok){angelPosLtpCache[key]={ltp:r.ltp,ts:Date.now()};angelPosQuoteStatus[key]={...old,state:'live',resolvedSymbol:r.tradingSymbol,error:'',resolution:r.attempts||[],lastSuccessAt:Date.now(),nextRetryAt:Date.now()+25000};}
     else{const delay=Math.min(120000,30000*Math.max(1,old.attempts||1));angelPosQuoteStatus[key]={...old,state:'failed',resolvedSymbol:'',error:r.error||'Broker quote failed',resolution:r.attempts||[],nextRetryAt:Date.now()+delay};}
   }
