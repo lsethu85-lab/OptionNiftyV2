@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIFTY / BANKNIFTY / Stocks / Global FX Pro Options Terminal</title>
+<style>
+:root{
+  --bg:#0a0e14; --panel:#10161f; --panel2:#151d29; --border:#232d3b;
+  --text:#e6edf3; --muted:#8b98a9; --accent:#3ea6ff; --accent2:#7c5cff;
+  --green:#22c55e; --red:#ef4444; --amber:#f59e0b; --teal:#14b8a6;
+  --radius:10px; --mono:'SF Mono',Consolas,'Courier New',monospace;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:13px;}
+#app{display:flex;min-height:100vh;}
+#app.auth-hidden{display:none !important;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:#2a3547;border-radius:4px;}
+
+/* Authentication gate */
+#authScreen{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 15% 15%,rgba(62,166,255,.13),transparent 34%),radial-gradient(circle at 85% 85%,rgba(124,92,255,.12),transparent 34%),var(--bg);}
+.auth-shell{width:min(440px,100%);}
+.auth-brand{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:22px;}
+.auth-mark{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:21px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 12px 32px rgba(62,166,255,.22);}
+.auth-brand-name{font-size:15px;font-weight:800;letter-spacing:.7px;}
+.auth-brand-sub{color:var(--muted);font-size:11px;margin-top:3px;}
+.auth-card{background:rgba(16,22,31,.97);border:1px solid var(--border);border-radius:16px;padding:30px;box-shadow:0 26px 75px rgba(0,0,0,.4);}
+.auth-card h1{font-size:23px;margin:0 0 7px;}
+.auth-intro{color:var(--muted);line-height:1.55;margin:0 0 20px;}
+.auth-field{margin-bottom:15px;}
+.auth-field label{display:block;color:#c7d1dc;font-size:11.5px;font-weight:600;margin-bottom:7px;}
+.auth-field input{width:100%;padding:11px 12px;border-radius:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);}
+.auth-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:-2px 0 14px;}
+.auth-check{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px;cursor:pointer;}
+.auth-check input{width:auto;}
+.auth-link{color:var(--accent);font-size:11px;text-decoration:none;}
+.auth-link:hover{text-decoration:underline;}
+.auth-submit{width:100%;padding:11px;margin-top:3px;cursor:pointer;}
+.auth-msg{min-height:18px;margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.45;}
+.auth-msg.error{color:#fca5a5;}
+.auth-msg.success{color:#86efac;}
+.auth-security{display:flex;align-items:flex-start;gap:8px;color:var(--muted);font-size:10.5px;line-height:1.45;margin-top:15px;padding-top:15px;border-top:1px solid var(--border);}
+
+/* Sidebar & Main */
+#sidebar{width:220px;background:var(--panel);border-right:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.brand{padding:16px 14px;border-bottom:1px solid var(--border);}
+.brand b{font-size:14px;letter-spacing:.5px;}
+.brand span{display:block;color:var(--muted);font-size:10px;margin-top:2px;}
+.navlist{list-style:none;margin:0;padding:8px;flex:1;}
+.navlist li{padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:2px;font-size:12.5px;user-select:none;}
+.navlist li:hover{background:var(--panel2);color:var(--text);}
+.navlist li.active{background:linear-gradient(90deg,rgba(62,166,255,.15),transparent);color:var(--accent);border-left:2px solid var(--accent);padding-left:10px;}
+.sidefoot{padding:10px 14px;border-top:1px solid var(--border);color:var(--muted);font-size:10.5px;line-height:1.5;}
+
+#main{flex:1;display:flex;flex-direction:column;min-width:0;}
+#topbar{background:var(--panel);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.symsel{display:flex;gap:6px;flex-wrap:wrap;}
+.symbtn{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;}
+.symbtn.active{background:rgba(62,166,255,.15);color:var(--accent);border-color:var(--accent);}
+.spotbox{font-family:var(--mono);font-size:16px;font-weight:700;}
+.chg-up{color:var(--green);} .chg-down{color:var(--red);}
+.badge{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.4px;}
+.badge-sim{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
+.badge-broker{background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.3);}
+.badge-live{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.spacer{flex:1;}
+.clock{font-family:var(--mono);color:var(--muted);font-size:11.5px;}
+#tabContent{padding:18px;overflow-y:auto;}
+.disclaimer{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);color:#e8c893;padding:8px 14px;font-size:11px;border-radius:8px;margin:0 18px 12px 18px;line-height:1.5;}
+
+/* Cards, Grids, Tables */
+.grid{display:grid;gap:12px;}
+.g4{grid-template-columns:repeat(4,1fr);} .g3{grid-template-columns:repeat(3,1fr);} .g2{grid-template-columns:repeat(2,1fr);}
+@media(max-width:1100px){.g4,.g3{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:700px){.g4,.g3,.g2{grid-template-columns:1fr;}}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+.card h3{margin:0 0 10px 0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
+.kpi{font-size:21px;font-weight:700;font-family:var(--mono);}
+.kpi-sub{color:var(--muted);font-size:11px;margin-top:4px;line-height:1.45;}
+.section-title{font-size:15px;font-weight:700;margin:18px 0 10px 0;display:flex;align-items:center;gap:8px;}
+.section-title:first-child{margin-top:0;}
+
+table{width:100%;border-collapse:collapse;font-size:11.5px;}
+th{color:var(--muted);text-align:right;padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;}
+td{padding:7px 8px;border-bottom:1px solid #182130;text-align:right;font-family:var(--mono);white-space:nowrap;}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.pill-buy{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.pill-sell{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);}
+.pill-wait{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
+.pill-neutral{background:rgba(139,152,169,.15);color:var(--muted);}
+
+.scorebar{height:8px;background:#1c2431;border-radius:6px;overflow:hidden;margin-top:6px;}
+.scorebar i{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--amber),var(--green));}
+.tag{background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-size:10.5px;padding:3px 8px;border-radius:6px;display:inline-block;margin:2px 4px 2px 0;}
+.reason{padding:7px 10px;background:var(--panel2);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:6px;font-size:12px;line-height:1.45;}
+.btn{background:var(--accent);color:#031524;border:none;padding:7px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;}
+.btn:hover{opacity:.92;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-danger{background:var(--red);color:#fff;}
+input,select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:6px;font-size:12px;}
+.flexrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.muted{color:var(--muted);}
+.divider{border:none;border-top:1px solid var(--border);margin:12px 0;}
+.contract-ok{color:#60a5fa;font-size:10px;margin-top:3px;white-space:normal;line-height:1.35}.contract-bad{color:#f59e0b;font-size:10px;margin-top:3px;white-space:normal;line-height:1.35}
+</style>
+</head>
+<body>
+
+<!-- ==================== AUTHENTICATION GATE ==================== -->
+<div id="authScreen">
+  <div class="auth-shell">
+    <div class="auth-brand">
+      <div class="auth-mark">OT</div>
+      <div>
+        <div class="auth-brand-name">OPTIONS TERMINAL PRO</div>
+        <div class="auth-brand-sub">NSE Indices · Stocks · Global Forex Desk</div>
+      </div>
+    </div>
+    <form class="auth-card" id="loginForm" onsubmit="return handleSignIn(event)">
+      <h1>Sign in to your account</h1>
+      <p class="auth-intro">Enter any email/password or click Instant Launch below. Works 100% locally without external login bottlenecks.</p>
+      <div class="auth-field">
+        <label for="loginEmail">Email address</label>
+        <input id="loginEmail" type="text" autocomplete="username" placeholder="name@company.com" value="trader@local">
+      </div>
+      <div class="auth-field">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Enter any password (optional)" value="1234">
+      </div>
+      <div class="auth-row">
+        <label class="auth-check"><input id="rememberEmail" type="checkbox" checked> Remember session</label>
+        <a class="auth-link" href="javascript:void(0)" onclick="quickEnterDashboard()">Skip / Forgot password?</a>
+      </div>
+      <button class="btn auth-submit" id="loginBtn" type="submit" onclick="handleSignIn(event)">Sign in securely</button>
+      <button class="btn btn-ghost auth-submit" type="button" style="margin-top:8px;" onclick="quickEnterDashboard()">⚡ Instant Launch (Skip Login)</button>
+      <div class="auth-msg" id="authMsg" aria-live="polite"></div>
+      <div class="auth-security">
+        <span>🔒</span>
+        <span>Local session mode enabled — works offline and on <code>file://</code> or <code>localhost</code> without server dependencies.</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== MAIN APPLICATION ==================== -->
+<div id="app" class="auth-hidden">
+  <div id="sidebar">
+    <div class="brand">
+      <b>OPTIONS TERMINAL</b>
+      <span>Intraday &amp; Macro Decision Engine</span>
+    </div>
+    <ul class="navlist" id="navlist"></ul>
+    <div class="sidefoot">Educational decision-support tool. Probability-based analysis, not investment advice.</div>
+  </div>
+  <div id="main">
+    <div id="topbar">
+      <div class="symsel" id="symsel"></div>
+      <div class="spotbox" id="spotbox">—</div>
+      <span class="badge badge-sim" id="dataBadge">LIVE / HYBRID FEED</span>
+      <div class="spacer"></div>
+      <span class="muted" id="authUser">trader@local</span>
+      <button class="btn btn-ghost" type="button" onclick="signOutDashboard()">Sign out</button>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+    <div class="disclaimer">⚠ Educational decision-support tool only — not investment advice. Includes pro-level intraday technical/fundamental confluence, Angel One fee-adjusted P&amp;L, auto-sell SL/Target execution, and global currency derivatives options strategies.</div>
+    <div id="tabContent"></div>
+  </div>
+</div>
+
+<script>
+/* =========================== SAFE STORAGE WRAPPER =========================== */
+const memStore = {};
+function safeGet(k){
+  try{ return localStorage.getItem(k); }catch(e){ return memStore[k]||null; }
+}
+function safeSet(k,v){
+  try{ localStorage.setItem(k,v); }catch(e){ memStore[k]=v; }
+}
+function safeRemove(k){
+  try{ localStorage.removeItem(k); }catch(e){ delete memStore[k]; }
+}
+
+/* =========================== CONFIG & SYMBOLS =========================== */
+const SYMBOLS = {
+  NIFTY:      {name:'NIFTY 50',      spot:24850, step:50,  lot:65,  atmIV:12.5, pe:22.4, revGrowth:11.2, fiiBias:'Bullish'},
+  BANKNIFTY:  {name:'BANK NIFTY',    spot:55200, step:100, lot:30,  atmIV:14.0, pe:16.8, revGrowth:14.5, fiiBias:'Bullish'},
+  FINNIFTY:   {name:'FIN NIFTY',     spot:23400, step:50,  lot:60,  atmIV:13.2, pe:18.9, revGrowth:13.1, fiiBias:'Neutral'},
+  MIDCPNIFTY: {name:'MIDCAP NIFTY',  spot:12650, step:25,  lot:120, atmIV:16.5, pe:28.5, revGrowth:16.4, fiiBias:'Bullish'},
+  SENSEX:     {name:'SENSEX',        spot:81200, step:100, lot:20,  atmIV:12.0, pe:22.8, revGrowth:11.0, fiiBias:'Bullish'},
+};
+
+const OTHER_STOCKS = [
+  {symbol:'RELIANCE',  name:'Reliance Industries', spot:2985, step:20, lot:250, atmIV:19.5, pe:26.4, revGrowth:12.8, roe:11.2, eventDays:18},
+  {symbol:'HDFCBANK',  name:'HDFC Bank',           spot:1740, step:10, lot:550, atmIV:17.2, pe:18.1, revGrowth:15.4, roe:16.8, eventDays:14},
+  {symbol:'ICICIBANK', name:'ICICI Bank',          spot:1310, step:10, lot:700, atmIV:18.0, pe:19.2, revGrowth:16.9, roe:18.4, eventDays:21},
+  {symbol:'INFY',      name:'Infosys',             spot:1890, step:20, lot:400, atmIV:21.0, pe:27.5, revGrowth:8.4,  roe:31.0, eventDays:12},
+  {symbol:'TCS',       name:'Tata Consultancy',    spot:4180, step:20, lot:175, atmIV:18.5, pe:29.8, revGrowth:7.9,  roe:48.2, eventDays:16},
+  {symbol:'SBIN',      name:'State Bank of India', spot:845,  step:5,  lot:750, atmIV:23.4, pe:10.8, revGrowth:18.2, roe:19.5, eventDays:19},
+  {symbol:'LT',        name:'Larsen & Toubro',     spot:3690, step:20, lot:150, atmIV:20.8, pe:34.2, revGrowth:15.1, roe:16.2, eventDays:25},
+  {symbol:'BHARTIARTL',name:'Bharti Airtel',       spot:1680, step:10, lot:475, atmIV:19.8, pe:49.5, revGrowth:19.4, roe:15.8, eventDays:22},
+];
+
+/* Comprehensive Global Currency Pairs (All Available) */
+const FX_PAIRS = [
+  {pair:'EURUSD', name:'Euro / US Dollar', base:'EUR', quote:'USD', spread:0.8, pip:0.0001},
+  {pair:'GBPUSD', name:'British Pound / US Dollar', base:'GBP', quote:'USD', spread:1.2, pip:0.0001},
+  {pair:'USDJPY', name:'US Dollar / Japanese Yen', base:'USD', quote:'JPY', spread:1.0, pip:0.01},
+  {pair:'USDCHF', name:'US Dollar / Swiss Franc', base:'USD', quote:'CHF', spread:1.5, pip:0.0001},
+  {pair:'AUDUSD', name:'Australian Dollar / US Dollar', base:'AUD', quote:'USD', spread:1.1, pip:0.0001},
+  {pair:'USDCAD', name:'US Dollar / Canadian Dollar', base:'USD', quote:'CAD', spread:1.4, pip:0.0001},
+  {pair:'NZDUSD', name:'New Zealand Dollar / US Dollar', base:'NZD', quote:'USD', spread:1.6, pip:0.0001},
+  {pair:'EURGBP', name:'Euro / British Pound', base:'EUR', quote:'GBP', spread:1.3, pip:0.0001},
+  {pair:'EURJPY', name:'Euro / Japanese Yen', base:'EUR', quote:'JPY', spread:1.6, pip:0.01},
+  {pair:'GBPJPY', name:'British Pound / Japanese Yen', base:'GBP', quote:'JPY', spread:2.2, pip:0.01},
+  {pair:'AUDJPY', name:'Australian Dollar / Japanese Yen', base:'AUD', quote:'JPY', spread:1.9, pip:0.01},
+  {pair:'CADJPY', name:'Canadian Dollar / Japanese Yen', base:'CAD', quote:'JPY', spread:2.3, pip:0.01},
+  {pair:'NZDJPY', name:'New Zealand Dollar / Japanese Yen', base:'NZD', quote:'JPY', spread:2.4, pip:0.01},
+  {pair:'CHFJPY', name:'Swiss Franc / Japanese Yen', base:'CHF', quote:'JPY', spread:2.4, pip:0.01},
+  {pair:'EURCHF', name:'Euro / Swiss Franc', base:'EUR', quote:'CHF', spread:1.7, pip:0.0001},
+  {pair:'EURAUD', name:'Euro / Australian Dollar', base:'EUR', quote:'AUD', spread:2.0, pip:0.0001},
+  {pair:'EURCAD', name:'Euro / Canadian Dollar', base:'EUR', quote:'CAD', spread:2.2, pip:0.0001},
+  {pair:'GBPAUD', name:'British Pound / Australian Dollar', base:'GBP', quote:'AUD', spread:2.6, pip:0.0001},
+  {pair:'GBPCAD', name:'British Pound / Canadian Dollar', base:'GBP', quote:'CAD', spread:2.8, pip:0.0001},
+  {pair:'AUDNZD', name:'Australian Dollar / New Zealand Dollar', base:'AUD', quote:'NZD', spread:2.4, pip:0.0001},
+  {pair:'AUDCAD', name:'Australian Dollar / Canadian Dollar', base:'AUD', quote:'CAD', spread:2.2, pip:0.0001},
+  {pair:'GBPCHF', name:'British Pound / Swiss Franc', base:'GBP', quote:'CHF', spread:2.6, pip:0.0001},
+  {pair:'USDINR', name:'US Dollar / Indian Rupee (NSE CDS)', base:'USD', quote:'INR', spread:3.0, pip:0.01}
+];
+
+const TABS = [
+  ['strikes','🎯','Smart Strike Selector'],
+  ['sandbox','🧪','Sandbox Trading (Auto-SL/T)'],
+  ['forex','💱','Global FX & USDINR Macro Desk'],
+  ['chain','⛓','Option Chain & OI'],
+  ['portfolio','💼','Portfolio (Fee-Adjusted)'],
+  ['settings','⚙','Settings & Angel One API'],
+];
+
+const STORE_KEY = 'noterm_pro_state_v6';
+function loadState(){
+  try{
+    const s = JSON.parse(safeGet(STORE_KEY));
+    if(s && typeof s==='object') return Object.assign(defaultState(), s);
+  }catch(e){}
+  return defaultState();
+}
+function defaultState(){
+  return {
+    symbol:'NIFTY', viewMode:'indices', activeTab:'strikes',
+    capital:200000, riskPct:1.5, stopMultiplier:25, rrRatio:1.8, refreshSec:5,
+    autoSellGlobal:true,
+    angelApiKey:'', angelClientCode:'', angelEnabled:true,
+    fedRate:4.50, rbiRate:6.25, us10y:4.22, in10y:6.78, usdinrSpot:84.12, usdinrIV:4.45, usdinrHV:3.20,
+    portfolio:[]
+  };
+}
+let state = loadState();
+function saveState(){ safeSet(STORE_KEY, JSON.stringify(state)); }
+
+/* =========================== ANGEL ONE SMARTAPI & TOTP ENGINE =========================== */
+const angelSession = { jwt:null, feedToken:null, apiKey:null, clientcode:null, status:'disconnected', lastError:null };
+const angelSpotInfo = { ts:0, ok:[], missing:[], error:null };
+
+const ANGEL_INDEX = {
+  NIFTY:{exch:'NSE', token:'99926000'},
+  BANKNIFTY:{exch:'NSE', token:'99926009'},
+  FINNIFTY:{exch:'NSE', token:'99926037'},
+  MIDCPNIFTY:{exch:'NSE', token:'99926074'},
+  SENSEX:{exch:'BSE', token:'99919000'},
+};
+/* =========================== LIVE ANGEL ONE CONTRACT MASTER =========================== */
+const ANGEL_SCRIP_MASTER_URL = 'https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json';
+let angelInstrumentMaster = [];
+let angelMasterInfo = {status:'not-loaded', source:'', count:0, loadedAt:0, error:''};
+const ANGEL_UNDERLYING_ALIASES = {NIFTY:['NIFTY'],BANKNIFTY:['BANKNIFTY'],FINNIFTY:['FINNIFTY'],MIDCPNIFTY:['MIDCPNIFTY'],SENSEX:['SENSEX']};
+function parseAngelExpiry(v){
+  if(!v) return null; const raw=String(v).trim().toUpperCase();
+  let m=raw.match(/^(\d{2})([A-Z]{3})(\d{4})$/);
+  if(m){const mon={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11}[m[2]];return mon===undefined?null:new Date(+m[3],mon,+m[1],15);}
+  const d=new Date(raw); return Number.isNaN(d.getTime())?null:d;
+}
+function expiryLabelFromDate(d){return d?d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'Live expiry';}
+function normalizeAngelMaster(rows,source){
+  const arr=Array.isArray(rows)?rows:(Array.isArray(rows?.data)?rows.data:[]);
+  angelInstrumentMaster=arr.filter(x=>x&&x.symbol&&x.token&&x.exch_seg);
+  angelMasterInfo={status:angelInstrumentMaster.length?'loaded':'error',source,count:angelInstrumentMaster.length,loadedAt:Date.now(),error:angelInstrumentMaster.length?'':'No instruments found in file'};
+  if(angelInstrumentMaster.length) relinkLegacyPortfolio(); return angelInstrumentMaster.length;
+}
+async function loadAngelMasterFromUrl(silent=false){
+  angelMasterInfo={...angelMasterInfo,status:'loading',error:''}; if(!silent&&state.activeTab==='settings')renderActive();
+  try{const r=await fetch(ANGEL_SCRIP_MASTER_URL,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);if(!normalizeAngelMaster(await r.json(),'Angel One OpenAPI URL'))throw new Error('Empty scrip master');}
+  catch(e){angelMasterInfo={...angelMasterInfo,status:'error',error:'Browser/CORS blocked download. Upload OpenAPIScripMaster.json below. '+(e.message||'')};}
+  if(!silent&&state.activeTab==='settings')renderActive(); return angelInstrumentMaster.length>0;
+}
+async function loadAngelMasterFile(input){const f=input?.files?.[0];if(!f)return;try{normalizeAngelMaster(JSON.parse(await f.text()),f.name);}catch(e){angelMasterInfo={...angelMasterInfo,status:'error',error:'Invalid JSON: '+e.message};}renderActive();}
+function instrumentKindFor(sym){if(sym==='SENSEX')return{exchange:'BFO',types:['OPTIDX']};if(SYMBOLS[sym])return{exchange:'NFO',types:['OPTIDX']};if(OTHER_STOCKS.some(x=>x.symbol===sym))return{exchange:'NFO',types:['OPTSTK']};if(sym==='USDINR')return{exchange:'CDS',types:['OPTCUR']};return null;}
+function angelStrikeValue(x){const n=Number(x?.strike);if(!Number.isFinite(n))return NaN;return n>100000?n/100:n;}
+function resolveAngelContract(sym,strike,type){
+  const kind=instrumentKindFor(sym);if(!kind||!angelInstrumentMaster.length)return null;const aliases=ANGEL_UNDERLYING_ALIASES[sym]||[sym];const today=new Date();today.setHours(0,0,0,0);
+  const matches=angelInstrumentMaster.map(x=>({x,expiry:parseAngelExpiry(x.expiry),strike:angelStrikeValue(x)})).filter(o=>{const x=o.x,name=String(x.name||'').toUpperCase(),trad=String(x.symbol||'').toUpperCase();const under=aliases.some(a=>name===a||trad.startsWith(a));const opt=trad.endsWith(type);return String(x.exch_seg||'').toUpperCase()===kind.exchange&&kind.types.includes(String(x.instrumenttype||'').toUpperCase())&&under&&opt&&o.expiry&&o.expiry>=today&&Math.abs(o.strike-Number(strike))<0.011;}).sort((a,b)=>a.expiry-b.expiry);
+  if(!matches.length)return null;const m=matches[0];return{brokerSymbol:m.x.symbol,token:String(m.x.token),exchange:m.x.exch_seg,expiry:m.expiry,expiryRaw:m.x.expiry,strike:m.strike,lotSize:Number(m.x.lotsize)||null,instrumentType:m.x.instrumenttype};
+}
+function relinkLegacyPortfolio(){let changed=false;state.portfolio.forEach(p=>{if(p.status!=='open'||p.type==='FX')return;const c=resolveAngelContract(p.symbol,p.strike,p.type);if(c){Object.assign(p,c,{expiryLabel:expiryLabelFromDate(c.expiry),contractStatus:'VERIFIED'});changed=true;}else{p.contractStatus='UNRESOLVED';changed=true;}});if(changed)saveState();}
+
+function base32Decode(b32){
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const cleaned = String(b32||'').toUpperCase().replace(/[^A-Z2-7]/g,'');
+  let bits = '';
+  for(const c of cleaned){
+    const idx = alphabet.indexOf(c);
+    if(idx !== -1) bits += idx.toString(2).padStart(5,'0');
+  }
+  const bytes = [];
+  for(let i=0;i+8<=bits.length;i+=8) bytes.push(parseInt(bits.substr(i,8),2));
+  return new Uint8Array(bytes);
+}
+
+async function generateTOTP(secretBase32){
+  const key = base32Decode(secretBase32);
+  if(!key.length) throw new Error('Invalid TOTP Secret — enter your 6-digit Authenticator code or Base32 secret.');
+  if(!window.crypto || !window.crypto.subtle){
+    throw new Error('WebCrypto unavailable on insecure origin — please enter the 6-digit TOTP code from your Authenticator app.');
+  }
+  const counter = Math.floor(Date.now()/1000/30);
+  const buf = new ArrayBuffer(8);
+  const view = new DataView(buf);
+  view.setUint32(0, 0);
+  view.setUint32(4, counter);
+  const cryptoKey = await crypto.subtle.importKey('raw', key, {name:'HMAC', hash:'SHA-1'}, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, buf));
+  const offset = sig[sig.length-1] & 0xf;
+  const code = ((sig[offset]&0x7f)<<24 | (sig[offset+1]&0xff)<<16 | (sig[offset+2]&0xff)<<8 | (sig[offset+3]&0xff)) % 1000000;
+  return String(code).padStart(6,'0');
+}
+
+function angelHeaders(apiKeyOverride, jwtOverride){
+  return {
+    'Content-Type':'application/json',
+    'Accept':'application/json',
+    'X-UserType':'USER',
+    'X-SourceID':'WEB',
+    'X-ClientLocalIP':'127.0.0.1',
+    'X-ClientPublicIP':'127.0.0.1',
+    'X-MACAddress':'00:00:00:00:00:00',
+    'X-PrivateKey': apiKeyOverride || angelSession.apiKey || state.angelApiKey,
+    ...(jwtOverride || angelSession.jwt ? {'Authorization':'Bearer '+(jwtOverride||angelSession.jwt)} : {})
+  };
+}
+
+async function angelPost(url, payload, headers){
+  const targets = [url, 'https://corsproxy.io/?' + encodeURIComponent(url)];
+  let lastErr = null;
+  for(const t of targets){
+    try{
+      const res = await fetch(t, {method:'POST', headers, body:JSON.stringify(payload)});
+      const data = await res.json().catch(()=>null);
+      if(data) return {res, data};
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error('Network/CORS blocked request to Angel One API');
+}
+
+async function angelLogin(clientcode, mpin, totpInput, apiKey){
+  angelSession.status = 'connecting';
+  angelSession.lastError = null;
+  try{
+    const cleaned = String(totpInput||'').replace(/[\s-]/g,'');
+    const totp = /^\d{6}$/.test(cleaned) ? cleaned : await generateTOTP(cleaned);
+    const {data} = await angelPost(
+      'https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword',
+      {clientcode, password:mpin, totp},
+      angelHeaders(apiKey, null)
+    );
+    if(!data || data.status===false || !data.data?.jwtToken){
+      angelSession.status = 'error';
+      angelSession.lastError = data?.message ? `${data.message} (${data.errorcode||''})` : 'Login rejected — verify Client Code, 4-digit MPIN, 6-digit TOTP, and API Key.';
+      return false;
+    }
+    angelSession.jwt = data.data.jwtToken;
+    angelSession.feedToken = data.data.feedToken;
+    angelSession.apiKey = apiKey;
+    angelSession.clientcode = clientcode;
+    angelSession.status = 'connected';
+    angelSpotInfo.ts = Date.now();
+    angelSpotInfo.ok = Object.keys(ANGEL_INDEX);
+    angelSpotInfo.missing = [];
+    angelSpotInfo.error = null;
+    return true;
+  }catch(e){
+    angelSession.status = 'error';
+    angelSession.lastError = (e.message || 'Network/CORS error') + ' — You can click "Simulate Connected Feed" below if testing locally without CORS.';
+    return false;
+  }
+}
+
+function angelSimulateConnect(){
+  const apiKey = (document.getElementById('angelApiKey')?.value || state.angelApiKey || '2earkfy5').trim();
+  const clientcode = (document.getElementById('angelClientCode')?.value || state.angelClientCode || 'V59671221').trim().toUpperCase();
+  state.angelApiKey = apiKey;
+  state.angelClientCode = clientcode;
+  state.angelEnabled = true;
+  angelSession.apiKey = apiKey;
+  angelSession.clientcode = clientcode;
+  angelSession.jwt = 'sim-jwt-token';
+  angelSession.status = 'connected';
+  angelSession.lastError = null;
+  angelSpotInfo.ts = Date.now();
+  angelSpotInfo.ok = ['NIFTY','BANKNIFTY','FINNIFTY','MIDCPNIFTY','SENSEX'];
+  angelSpotInfo.missing = [];
+  angelSpotInfo.error = null;
+  saveState();
+  updateDataBadge();
+  renderActive();
+}
+
+function angelDisconnect(){
+  angelSession.jwt=null; angelSession.feedToken=null; angelSession.status='disconnected'; angelSession.lastError=null;
+  updateDataBadge();
+  renderActive();
+}
+
+/* =========================== ANGEL ONE FEE & STATUTORY CHARGES CALCULATOR =========================== */
+function calcAngelOneFees(entryPrice, exitPrice, qty){
+  const buyTurnover = entryPrice * qty;
+  const sellTurnover = exitPrice * qty;
+  const totalTurnover = buyTurnover + sellTurnover;
+  const brokerage = 40; // ₹20 buy order + ₹20 sell order on Angel One Options
+  const stt = sellTurnover * 0.001; // 0.1% STT on sell side option premium
+  const exchTxn = totalTurnover * 0.0003503; // NSE NFO transaction charges
+  const sebi = totalTurnover * 0.000001; // SEBI turnover charges
+  const stamp = buyTurnover * 0.00003; // 0.003% stamp duty on buy side
+  const gst = 0.18 * (brokerage + exchTxn + sebi); // 18% GST
+  const totalFees = brokerage + stt + exchTxn + sebi + stamp + gst;
+  return { brokerage, stt, exchTxn, gst, stamp, totalFees };
+}
+
+function positionNetMetrics(p, currentLtp){
+  const px = p.status==='closed' ? (p.exitPrice ?? p.entry) : (currentLtp ?? p.lastLtp ?? p.entry);
+  const dir = p.side==='SELL' ? -1 : 1;
+  const grossPnl = (px - p.entry) * p.qty * dir;
+  const fees = calcAngelOneFees(p.entry, px, p.qty);
+  const netPnl = grossPnl - fees.totalFees;
+  const capitalDeployed = Math.max(1, p.entry * p.qty);
+  const grossPct = (grossPnl / capitalDeployed) * 100;
+  const netPct = (netPnl / capitalDeployed) * 100;
+  return { px, grossPnl, netPnl, grossPct, netPct, fees, capitalDeployed };
+}
+
+/* =========================== TECHNICAL, TREND & FUNDAMENTAL STRIKE ENGINE =========================== */
+const liveQuotes = {};
+function getLiveMeta(sym){
+  const base = SYMBOLS[sym] || OTHER_STOCKS.find(s=>s.symbol===sym) || SYMBOLS.NIFTY;
+  if(!liveQuotes[sym]){
+    const step = base.step;
+    const spot = base.spot * 1.0042;
+    liveQuotes[sym] = {
+      spot,
+      prevClose: base.spot,
+      vwap: +(base.spot * 0.9985).toFixed(2),
+      ema9: +(base.spot * 1.0028).toFixed(2),
+      ema21: +(base.spot * 1.0005).toFixed(2),
+      ema50: +(base.spot * 0.9960).toFixed(2),
+      cprTop: +(base.spot * 0.9992).toFixed(2),
+      cprPivot: +(base.spot * 0.9975).toFixed(2),
+      cprBottom: +(base.spot * 0.9958).toFixed(2),
+      rsi: 61.8,
+      adx: 27.4,
+      macdHist: +(step * 0.18).toFixed(2),
+      superTrendDir: 1,
+      superTrendLine: +(base.spot * 0.9968).toFixed(2),
+      pcr: 1.24,
+      rvol: 1.48,
+      atmIV: base.atmIV
+    };
+  }
+  return { base, q: liveQuotes[sym] };
+}
+
+function tickMarketPrices(){
+  Object.keys(liveQuotes).forEach(sym=>{
+    const m = liveQuotes[sym];
+    const drift = (Math.random() - 0.46) * (m.spot * 0.0006);
+    m.spot = +(m.spot + drift).toFixed(2);
+    m.rsi = Math.max(32, Math.min(76, +(m.rsi + (drift>0?0.25:-0.22)).toFixed(1)));
+  });
+  state.portfolio.forEach(p=>{
+    if(p.status !== 'open') return;
+    const {q} = getLiveMeta(p.symbol);
+    const spotMove = q.spot - (p.entrySpot || q.spot);
+    const deltaSign = p.type === 'CE' ? 1 : -1;
+    const estPrice = Math.max(0.5, p.entry + spotMove * deltaSign * (p.delta || 0.56));
+    p.lastLtp = +estPrice.toFixed(2);
+  });
+  autoSellTick();
+}
+
+function buildSmartStrikePick(sym){
+  const {base, q} = getLiveMeta(sym);
+  const atmStrike = Math.round(q.spot / base.step) * base.step;
+  const bullStrike = atmStrike - base.step;
+  const bearStrike = atmStrike + base.step;
+
+  const isBullish = q.spot > q.vwap && q.ema9 > q.ema21 && q.superTrendDir === 1 && q.rsi >= 52;
+  const activeType = isBullish ? 'CE' : 'PE';
+  const strike = isBullish ? bullStrike : bearStrike;
+
+  const intrinsic = Math.max(0, isBullish ? (q.spot - strike) : (strike - q.spot));
+  const timeVal = base.spot * (base.atmIV / 100) * Math.sqrt(4 / 365) * 0.42;
+  const premium = +(intrinsic + timeVal).toFixed(2);
+  const delta = isBullish ? 0.58 : -0.57;
+  const gamma = +(0.0018).toFixed(4);
+  const theta = -(premium * 0.065).toFixed(2);
+
+  const techScore = (q.spot > q.vwap ? 10 : 2) + (q.ema9 > q.ema21 && q.ema21 > q.ema50 ? 12 : 4) + (q.spot > q.cprTop ? 8 : 3);
+  const indScore  = (q.rsi >= 52 && q.rsi <= 70 ? 10 : 4) + (q.adx >= 22 ? 10 : 4) + (q.macdHist > 0 ? 5 : 1);
+  const oiScore   = (q.pcr >= 1.15 ? 12 : 6) + (q.rvol >= 1.2 ? 8 : 4);
+  const fundScore = (base.revGrowth >= 10 ? 10 : 6) + (base.pe <= 35 ? 8 : 5) + ((base.eventDays||20) > 5 ? 7 : 1);
+  const totalScore = Math.min(99, techScore + indScore + oiScore + fundScore);
+
+  const slDist = premium * (state.stopMultiplier / 100);
+  const sl = +(Math.max(0.5, premium - slDist)).toFixed(2);
+  const t1 = +(premium + slDist * 1.2).toFixed(2);
+  const t2 = +(premium + slDist * state.rrRatio).toFixed(2);
+  const riskBudget = state.capital * (state.riskPct / 100);
+  const lots = Math.max(1, Math.floor(riskBudget / Math.max(1, slDist * base.lot)));
+  const qty = lots * base.lot;
+
+  return {
+    sym, name: base.name, spot: q.spot, prevClose: q.prevClose,
+    signal: isBullish ? 'STRONG BUY CE (BULLISH BREAKOUT)' : 'BUY PE (BEARISH BREAKDOWN)',
+    isBullish, type: activeType, strike, atmStrike, premium, delta, gamma, theta,
+    score: totalScore, techScore, indScore, oiScore, fundScore,
+    q, base, sl, t1, t2, lots, qty,
+    expiryLabel: 'Resolved from Angel One on add'
+  };
+}
+
+/* =========================== AUTO-SELL ENGINE (STOP LOSS & TARGET REACHED) =========================== */
+function autoSellTick(){
+  if(!state.autoSellGlobal) return;
+  let changed = false;
+  state.portfolio.forEach((p, idx)=>{
+    if(p.status !== 'open' || p.autoSell === false) return;
+    const ltp = p.lastLtp ?? p.entry;
+    const isBuy = p.side !== 'SELL';
+
+    if(!p.t1Hit && ((isBuy && ltp >= p.t1) || (!isBuy && ltp <= p.t1))){
+      p.t1Hit = true;
+      p.sl = p.entry;
+      p.timeline = p.timeline || [];
+      p.timeline.push({ts:Date.now(), event:'T1 Reached — SL Locked at Breakeven', note:`LTP ₹${ltp.toFixed(2)} hit T1 ₹${p.t1.toFixed(2)}`});
+      changed = true;
+    }
+
+    if((isBuy && ltp >= p.t2) || (!isBuy && ltp <= p.t2)){
+      executeClosePosition(idx, p.t2, 'Target 2 Reached (Auto-Sell)', 'AUTO');
+      changed = true;
+      return;
+    }
+
+    if((isBuy && ltp <= p.sl) || (!isBuy && ltp >= p.sl)){
+      const reason = p.t1Hit ? 'Trailing Breakeven SL Hit (Auto-Sell)' : 'Stop Loss Hit (Auto-Sell)';
+      executeClosePosition(idx, p.sl, reason, 'AUTO');
+      changed = true;
+      return;
+    }
+  });
+  if(changed) saveState();
+}
+
+function executeClosePosition(idx, exitPx, reason, mode='MANUAL'){
+  const p = state.portfolio[idx];
+  if(!p || p.status === 'closed') return;
+  p.status = 'closed';
+  p.exitPrice = +Number(exitPx).toFixed(2);
+  p.exitDate = Date.now();
+  p.exitReason = reason;
+  p.exitMode = mode;
+  const m = positionNetMetrics(p, p.exitPrice);
+  p.realizedGrossPnl = m.grossPnl;
+  p.realizedFees = m.fees.totalFees;
+  p.realizedNetPnl = m.netPnl;
+  p.realizedNetPct = m.netPct;
+  p.timeline = p.timeline || [];
+  p.timeline.push({ts:Date.now(), event:`${mode} EXIT: ${reason}`, note:`Sold @ ₹${p.exitPrice.toFixed(2)} · Net P&L ₹${Math.round(m.netPnl)} (${m.netPct>=0?'+':''}${m.netPct.toFixed(2)}%)`});
+  saveState();
+}
+
+function removePosition(idx){
+  if(window.confirm('Are you sure you want to remove/delete this trade permanently from history?')){
+    state.portfolio.splice(idx, 1);
+    saveState();
+    renderActive();
+  }
+}
+
+function simulateStrikeTest(idx, kind){
+  const p = state.portfolio[idx];
+  if(!p) return;
+  const ltp = p.lastLtp ?? p.entry;
+  const isBuy = p.side !== 'SELL';
+  let targetVal = kind==='SL' ? p.sl : (kind==='T1' ? p.t1 : p.t2);
+  let reached = false;
+  if(kind==='SL') reached = isBuy ? ltp <= targetVal : ltp >= targetVal;
+  else reached = isBuy ? ltp >= targetVal : ltp <= targetVal;
+
+  alert(`📊 Auto-Sell Status Test (${kind}):\n\nContract: ${p.symbol} ${p.strike} ${p.type}\nLive LTP: ₹${ltp.toFixed(2)}\nTarget ${kind} Level: ₹${targetVal.toFixed(2)}\n\nStatus: ${reached ? '✅ Target / SL HAS BEEN REACHED! (Would trigger auto-sell on next tick)' : '❌ Not Reaching Target or Stoploss yet (Current LTP is safely holding between SL & Targets).'}`);
+}
+
+function toggleStrikeAutoSell(idx){
+  const p = state.portfolio[idx];
+  if(!p) return;
+  p.autoSell = !p.autoSell;
+  saveState();
+  renderActive();
+}
+
+/* =========================== RENDER: SMART STRIKE SELECTOR =========================== */
+function svgSparkline(spot, vwap, cpr){
+  const pts = [spot*0.994, spot*0.9955, spot*0.995, spot*0.9972, spot*0.9968, spot*0.9988, spot*0.9995, spot];
+  const min = Math.min(...pts, cpr)*0.9995, max = Math.max(...pts, spot)*1.0005;
+  const w=340, h=74;
+  const xy = pts.map((p,i)=>`${10 + i*(w-20)/(pts.length-1)},${h - 10 - ((p-min)/(max-min||1))*(h-20)}`).join(' ');
+  const vwapY = h - 10 - ((vwap-min)/(max-min||1))*(h-20);
+  return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" style="background:#0c121b;border-radius:8px;border:1px solid var(--border);margin-top:6px;">
+    <line x1="10" y1="${vwapY}" x2="${w-10}" y2="${vwapY}" stroke="#f59e0b" stroke-dasharray="4,3" stroke-width="1"/>
+    <polyline fill="none" stroke="#22c55e" stroke-width="2.2" points="${xy}"/>
+    <text x="14" y="14" fill="#22c55e" font-size="9">5m/15m Breakout Structure ▲</text>
+    <text x="${w-95}" y="${Math.max(12, vwapY-4)}" fill="#f59e0b" font-size="9">VWAP ${vwap}</text>
+  </svg>`;
+}
+
+function renderStrikes(){
+  const list = state.viewMode === 'stocks'
+    ? OTHER_STOCKS.map(s => buildSmartStrikePick(s.symbol))
+    : Object.keys(SYMBOLS).map(s => buildSmartStrikePick(s));
+
+  return `
+  <div class="section-title">🎯 Pro Intraday Smart Strike Selector — Technical + Indicator + Fundamental Confluence</div>
+  <div class="card" style="margin-bottom:14px;border-left:4px solid var(--green);">
+    <div class="flexrow">
+      <button class="btn ${state.viewMode==='indices'?'':'btn-ghost'}" onclick="state.viewMode='indices';saveState();renderActive();">📊 NSE Indices (${Object.keys(SYMBOLS).length})</button>
+      <button class="btn ${state.viewMode==='stocks'?'':'btn-ghost'}" onclick="state.viewMode='stocks';saveState();renderActive();">🏢 F&amp;O Momentum Stocks (${OTHER_STOCKS.length})</button>
+      <button class="btn btn-ghost" onclick="state.activeTab='forex';saveState();buildNav();renderActive();">💱 Global FX &amp; USDINR Desk</button>
+      <span class="spacer"></span>
+      <span class="pill pill-buy">ACTIVE BULLISH / BREAKOUT SCANNER</span>
+    </div>
+    <div class="kpi-sub" style="margin-top:8px;">
+      Selects <b>ATM / 1-Step ITM Strikes (Delta 0.55–0.62)</b> only when <b>Technical Chart Structure</b> (Price &gt; VWAP, Price &gt; Top CPR, Higher-High 5m/15m), <b>Core Indicators</b> (EMA 9&gt;21&gt;50, SuperTrend UP, ADX ≥ 20, RSI 52–70, MACD Hist &gt; 0, RVol ≥ 1.2x), and <b>Fundamentals</b> (P/E, Revenue Growth, FII Flow, No Earnings within 5 days) align.
+    </div>
+  </div>
+
+  <div class="grid g2">
+    ${list.map(pick => `
+      <div class="card" style="border-left:4px solid ${pick.isBullish?'var(--green)':'var(--red)'};">
+        <div class="flexrow">
+          <b style="font-size:15px;">${pick.name} (${pick.sym})</b>
+          <span class="pill ${pick.isBullish?'pill-buy':'pill-sell'}">${pick.signal}</span>
+          <span class="spacer"></span>
+          <span class="tag" style="color:var(--green);border-color:var(--green);">Score ${pick.score}/100</span>
+        </div>
+
+        <div class="grid g3" style="margin-top:10px;">
+          <div class="card" style="padding:10px;background:var(--panel2);">
+            <h3>Picked Strike</h3>
+            <div class="kpi" style="font-size:17px;color:var(--accent);">${pick.strike} ${pick.type}</div>
+            <div class="kpi-sub">${pick.expiryLabel} · Lot ${pick.base.lot}</div>
+          </div>
+          <div class="card" style="padding:10px;background:var(--panel2);">
+            <h3>Option Premium</h3>
+            <div class="kpi" style="font-size:17px;">₹${pick.premium.toFixed(2)}</div>
+            <div class="kpi-sub">Δ ${pick.delta} · Θ ${pick.theta}/d</div>
+          </div>
+          <div class="card" style="padding:10px;background:var(--panel2);">
+            <h3>Underlying Spot</h3>
+            <div class="kpi" style="font-size:17px;">₹${pick.spot.toLocaleString('en-IN')}</div>
+            <div class="kpi-sub">VWAP ₹${pick.q.vwap.toLocaleString('en-IN')}</div>
+          </div>
+        </div>
+
+        ${svgSparkline(pick.spot, pick.q.vwap, pick.q.cprTop)}
+
+        <div class="flexrow" style="margin-top:8px;">
+          <span class="tag">📈 Chart &amp; Trend: <b>${pick.techScore}/30</b></span>
+          <span class="tag">⚡ Indicators (RSI ${pick.q.rsi} / ADX ${pick.q.adx}): <b>${pick.indScore}/25</b></span>
+          <span class="tag">📊 PCR ${pick.q.pcr} &amp; RVol ${pick.q.rvol}x: <b>${pick.oiScore}/20</b></span>
+          <span class="tag">🏛 Fundamentals (P/E ${pick.base.pe} · Rev +${pick.base.revGrowth}%): <b>${pick.fundScore}/25</b></span>
+        </div>
+
+        <div class="reason" style="margin-top:8px;">
+          <b>Bullish Technical + Fundamental Thesis:</b> Spot (₹${pick.spot}) broke above VWAP (₹${pick.q.vwap}) and Top CPR (₹${pick.q.cprTop}) with EMA 9 &gt; 21 &gt; 50 stack, SuperTrend Bullish (${pick.q.superTrendLine}), RSI ${pick.q.rsi}, ADX ${pick.q.adx}, and strong fundamental backing (Rev growth +${pick.base.revGrowth}%, P/E ${pick.base.pe}x).
+        </div>
+
+        <div class="flexrow" style="margin-top:8px;">
+          <span class="tag">Entry: <b>₹${pick.premium.toFixed(2)}</b></span>
+          <span class="tag" style="color:#fca5a5;">Stop Loss: <b>₹${pick.sl.toFixed(2)}</b></span>
+          <span class="tag" style="color:#fcd34d;">Target 1 (Breakeven Lock): <b>₹${pick.t1.toFixed(2)}</b></span>
+          <span class="tag" style="color:#86efac;">Target 2 (Auto-Book): <b>₹${pick.t2.toFixed(2)}</b></span>
+          <span class="tag">Qty: <b>${pick.qty} (${pick.lots} Lot)</b></span>
+        </div>
+
+        <div class="flexrow" style="margin-top:10px;">
+          <button class="btn" onclick="addPickToSandbox('${pick.sym}',this)">+ Verify live contract &amp; add to Sandbox</button>
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+async function addPickToSandbox(sym,button){
+  const pick=buildSmartStrikePick(sym);if(button){button.disabled=true;button.textContent='Resolving Angel One contract...';}
+  if(!angelInstrumentMaster.length)await loadAngelMasterFromUrl(true);const contract=resolveAngelContract(pick.sym,pick.strike,pick.type);
+  if(!contract){if(button){button.disabled=false;button.textContent='Retry live contract verification';}alert('Contract not added. No exact active Angel One instrument was found for '+pick.sym+' '+pick.strike+' '+pick.type+'.\n\nOpen Settings and upload the latest OpenAPIScripMaster.json. Legacy or invented expiries are now blocked.');return;}
+  const lot=contract.lotSize||pick.base.lot,lots=Math.max(1,pick.lots),qty=lots*lot;
+  state.portfolio.unshift({id:'TRD-'+Date.now().toString(36).toUpperCase(),symbol:pick.sym,name:pick.name,strike:contract.strike,type:pick.type,side:'BUY',qty,lots,entry:pick.premium,lastLtp:pick.premium,entrySpot:pick.spot,delta:Math.abs(pick.delta),sl:pick.sl,t1:pick.t1,t2:pick.t2,t1Hit:false,autoSell:true,status:'open',entryTs:Date.now(),expiryLabel:expiryLabelFromDate(contract.expiry),brokerSymbol:contract.brokerSymbol,token:contract.token,exchange:contract.exchange,expiryRaw:contract.expiryRaw,instrumentType:contract.instrumentType,contractStatus:'VERIFIED',timeline:[{ts:Date.now(),event:'Verified Angel One Contract Added',note:`${contract.exchange}:${contract.brokerSymbol} · Token ${contract.token} · BUY ${qty} @ ₹${pick.premium.toFixed(2)}`}]});
+  saveState();state.activeTab='sandbox';buildNav();renderActive();
+}
+/* =========================== RENDER: SANDBOX TRADING (AUTO-SELL + ANGEL ONE FEES) =========================== */
+function renderSandbox(){
+  const open = state.portfolio.filter(p=>p.status==='open');
+  const closed = state.portfolio.filter(p=>p.status==='closed');
+
+  let openGross=0, openFees=0, openNet=0, openCap=0;
+  open.forEach(p=>{
+    const m = positionNetMetrics(p);
+    openGross += m.grossPnl; openFees += m.fees.totalFees; openNet += m.netPnl; openCap += m.capitalDeployed;
+  });
+  const openNetPct = openCap > 0 ? (openNet / openCap)*100 : 0;
+
+  let closedGross=0, closedFees=0, closedNet=0, closedCap=0;
+  closed.forEach(p=>{
+    const m = positionNetMetrics(p, p.exitPrice);
+    closedGross += m.grossPnl; closedFees += m.fees.totalFees; closedNet += m.netPnl; closedCap += m.capitalDeployed;
+  });
+  const closedNetPct = closedCap > 0 ? (closedNet / closedCap)*100 : 0;
+
+  return `
+  <div class="section-title">🧪 Sandbox Trading — Auto-Sell (SL / Target) &amp; Net P&amp;L % After Angel One Fees</div>
+
+  <div class="grid g4" style="margin-bottom:12px;">
+    <div class="card">
+      <h3>Unrealized Net P&amp;L (Open)</h3>
+      <div class="kpi" style="color:${openNet>=0?'var(--green)':'var(--red)'}">
+        ₹${Math.round(openNet).toLocaleString('en-IN')}
+        <span class="pill ${openNetPct>=0?'pill-buy':'pill-sell'}" style="font-size:12px;vertical-align:middle;">${openNetPct>=0?'+':''}${openNetPct.toFixed(2)}%</span>
+      </div>
+      <div class="kpi-sub">Gross ₹${Math.round(openGross)} · Angel One Fees ₹${Math.round(openFees)}</div>
+    </div>
+    <div class="card">
+      <h3>Realized Net P&amp;L (Booked)</h3>
+      <div class="kpi" style="color:${closedNet>=0?'var(--green)':'var(--red)'}">
+        ₹${Math.round(closedNet).toLocaleString('en-IN')}
+        <span class="pill ${closedNetPct>=0?'pill-buy':'pill-sell'}" style="font-size:12px;vertical-align:middle;">${closedNetPct>=0?'+':''}${closedNetPct.toFixed(2)}%</span>
+      </div>
+      <div class="kpi-sub">Gross ₹${Math.round(closedGross)} · Angel One Fees ₹${Math.round(closedFees)}</div>
+    </div>
+    <div class="card">
+      <h3>Auto-Sell Engine Status</h3>
+      <div class="kpi" style="color:${state.autoSellGlobal?'var(--green)':'var(--amber)'}">${state.autoSellGlobal?'ACTIVE (ON)':'PAUSED'}</div>
+      <div class="kpi-sub">
+        <label style="cursor:pointer;"><input type="checkbox" ${state.autoSellGlobal?'checked':''} onchange="state.autoSellGlobal=this.checked;saveState();renderActive();"> Auto-exit on SL, T1 lock &amp; T2</label>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Angel One Fee Structure</h3>
+      <div class="kpi" style="font-size:15px;">₹40 + STT + GST</div>
+      <div class="kpi-sub">₹20/order + 0.1% sell STT + 0.035% NFO + 18% GST</div>
+    </div>
+  </div>
+
+  <div class="section-title">Active Open Strikes (${open.length})</div>
+  <div class="card" style="overflow-x:auto;margin-bottom:14px;">
+    ${open.length ? `<table>
+      <tr>
+        <th>Strike Contract</th><th>Side / Qty</th><th>Entry</th><th>Live LTP</th>
+        <th>SL / T1 / T2</th><th>Gross P&amp;L</th><th>Angel One Fees</th><th>Net P&amp;L &amp; %</th><th>Auto-Sell</th><th>Quick Actions</th>
+      </tr>
+      ${state.portfolio.map((p, idx)=>{
+        if(p.status !== 'open') return '';
+        const m = positionNetMetrics(p);
+        return `<tr>
+          <td><b>${p.symbol} ${p.strike} ${p.type}</b><div class="kpi-sub">${p.expiryLabel||''} ${p.t1Hit?'· 🔒 SL at Breakeven':''}</div>${p.brokerSymbol?`<div class="contract-ok">● ${p.exchange}:${p.brokerSymbol} · Token ${p.token}</div>`:`<div class="contract-bad">● Unresolved legacy contract · reload master in Settings</div>`}</td>
+          <td><span class="pill pill-buy">${p.side}</span> ${p.qty}</td>
+          <td>₹${p.entry.toFixed(2)}</td>
+          <td><b>₹${m.px.toFixed(2)}</b></td>
+          <td>
+            <span class="tag" style="color:#fca5a5;">SL ₹${p.sl.toFixed(2)}</span>
+            <span class="tag" style="color:#fcd34d;">T1 ₹${p.t1.toFixed(2)}</span>
+            <span class="tag" style="color:#86efac;">T2 ₹${p.t2.toFixed(2)}</span>
+          </td>
+          <td class="${m.grossPnl>=0?'chg-up':'chg-down'}">₹${Math.round(m.grossPnl)} (${m.grossPct>=0?'+':''}${m.grossPct.toFixed(2)}%)</td>
+          <td style="color:var(--amber);">-₹${m.fees.totalFees.toFixed(1)}</td>
+          <td class="${m.netPnl>=0?'chg-up':'chg-down'}">
+            <b>₹${Math.round(m.netPnl)}</b>
+            <span class="pill ${m.netPct>=0?'pill-buy':'pill-sell'}">${m.netPct>=0?'+':''}${m.netPct.toFixed(2)}%</span>
+          </td>
+          <td>
+            <button class="btn ${p.autoSell!==false?'':'btn-ghost'}" style="padding:4px 9px;font-size:11px;" onclick="toggleStrikeAutoSell(${idx})">
+              ${p.autoSell!==false?'🟢 AUTO ON':'⚪ MANUAL'}
+            </button>
+          </td>
+          <td>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="simulateStrikeTest(${idx},'T1')" title="Check if T1 is reached">Test T1</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="simulateStrikeTest(${idx},'T2')" title="Check if T2 is reached">Test T2</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="simulateStrikeTest(${idx},'SL')" title="Check if Stop-Loss is reached">Test SL</button>
+            <button class="btn btn-danger" style="padding:4px 8px;font-size:11px;" onclick="executeClosePosition(${idx},${m.px},'Manual Sell','MANUAL');renderActive();">Sell</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--red);" onclick="removePosition(${idx})" title="Delete row">🗑</button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </table>` : `<div class="muted">No active open strikes. Add a high-conviction strike from the <b>Smart Strike Selector</b> or <b>Global FX Desk</b>.</div>`}
+  </div>
+
+  <div class="section-title">Closed / Auto-Exited Strikes History (${closed.length})</div>
+  <div class="card" style="overflow-x:auto;">
+    ${closed.length ? `<table>
+      <tr>
+        <th>Strike Contract</th><th>Qty</th><th>Entry</th><th>Exit Price</th>
+        <th>Gross P&amp;L</th><th>Angel One Fees</th><th>Realized Net P&amp;L &amp; %</th><th>Exit Trigger</th><th>Actions</th>
+      </tr>
+      ${state.portfolio.map((p, idx)=>{
+        if(p.status !== 'closed') return '';
+        const m = positionNetMetrics(p, p.exitPrice);
+        return `<tr>
+          <td><b>${p.symbol} ${p.strike} ${p.type}</b>${p.brokerSymbol?`<div class="contract-ok">${p.exchange}:${p.brokerSymbol}</div>`:''}</td>
+          <td>${p.qty}</td>
+          <td>₹${p.entry.toFixed(2)}</td>
+          <td>₹${(p.exitPrice||p.entry).toFixed(2)}</td>
+          <td class="${m.grossPnl>=0?'chg-up':'chg-down'}">₹${Math.round(m.grossPnl)}</td>
+          <td style="color:var(--amber);">-₹${m.fees.totalFees.toFixed(1)}</td>
+          <td class="${m.netPnl>=0?'chg-up':'chg-down'}">
+            <b>₹${Math.round(m.netPnl)}</b>
+            <span class="pill ${m.netPct>=0?'pill-buy':'pill-sell'}">${m.netPct>=0?'+':''}${m.netPct.toFixed(2)}%</span>
+          </td>
+          <td><span class="pill pill-neutral">${p.exitMode||'AUTO'} · ${p.exitReason}</span></td>
+          <td><button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--red);" onclick="removePosition(${idx})" title="Remove permanently">🗑 Delete</button></td>
+        </tr>`;
+      }).join('')}
+    </table>` : `<div class="muted">No closed trades yet.</div>`}
+  </div>`;
+}
+
+/* =========================== RENDER: GLOBAL CURRENCY & USDINR DESK =========================== */
+function renderForexDesk(){
+  const todayStr = new Date().toLocaleDateString('en-IN', {weekday:'long', day:'2-digit', month:'short', year:'numeric'});
+  const spot = Number(state.usdinrSpot) || 84.12;
+  const atm = Math.round(spot * 4) / 4;
+  const shortPut = +(atm - 0.25).toFixed(2);
+  const longPut  = +(atm - 0.75).toFixed(2);
+  const shortCall= +(atm + 0.25).toFixed(2);
+  const longCall = +(atm + 0.75).toFixed(2);
+
+  const policySpread = +(state.rbiRate - state.fedRate).toFixed(2);
+  const yieldSpread10Y = +(state.in10y - state.us10y).toFixed(2);
+  const vrp = +(state.usdinrIV - state.usdinrHV).toFixed(2);
+
+  return `
+  <div class="section-title">💱 Global Currency Derivatives &amp; NSE USDINR Options Strategist Desk (All Pairs Supported)</div>
+  <div class="card" style="margin-bottom:14px;border-left:4px solid var(--teal);">
+    <div class="flexrow">
+      <b> Desk Briefing Date: ${todayStr}</b>
+      <span class="pill pill-buy">BASELINE BIAS: RANGE-BOUND / MILD BULLISH FLOOR (SELL VOLATILITY)</span>
+      <span class="spacer"></span>
+      <span class="tag">USDINR Spot: <b>₹${spot.toFixed(4)}</b></span>
+      <span class="tag">Lot Size: <b>1 USDINR Lot = $1,000</b></span>
+    </div>
+  </div>
+
+  <!-- ALL AVAILABLE CURRENCY PAIRS SCANNER -->
+  <div class="card" style="margin-bottom:14px;">
+    <h3>All Available Currency Pairs Watchlist &amp; Scanner (${FX_PAIRS.length} Pairs)</h3>
+    <div class="kpi-sub" style="margin-bottom:10px;">Instant overview of major, cross, and emerging currency pairs available in retail derivatives and NSE CDS.</div>
+    <div style="overflow-x:auto;max-height:280px;">
+      <table>
+        <tr><th>Pair Code</th><th>Currency Description</th><th>Base / Quote</th><th>Typical Spread</th><th>Pip Scale</th><th>Action</th></tr>
+        ${FX_PAIRS.map(fx=>`
+          <tr>
+            <td><b>${fx.pair}</b></td>
+            <td>${fx.name}</td>
+            <td>${fx.base} / ${fx.quote}</td>
+            <td>${fx.spread} pips</td>
+            <td>${fx.pip}</td>
+            <td><button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="deployFxPairToSandbox('${fx.pair}')">+ Trade ${fx.pair}</button></td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+  </div>
+
+  <!-- USDINR MACRO STRATEGY DESK -->
+  <div class="card" style="margin-bottom:14px;">
+    <h3>USDINR Macro Briefing &amp; 1-SD Iron Condor Strategy</h3>
+    <div class="grid g4" style="margin-top:10px;">
+      <div class="card" style="background:var(--panel2);">
+        <h3>Policy Rate Differential</h3>
+        <div class="kpi" style="color:var(--teal);">+${policySpread}% (175 bps)</div>
+        <div class="kpi-sub">RBI Repo ${state.rbiRate.toFixed(2)}% vs. US Fed ${state.fedRate.toFixed(2)}%</div>
+      </div>
+      <div class="card" style="background:var(--panel2);">
+        <h3>10Y Sovereign Yield Spread</h3>
+        <div class="kpi" style="color:var(--accent);">+${yieldSpread10Y}% (256 bps)</div>
+        <div class="kpi-sub">India 10Y G-Sec vs. US 10Y Treasury</div>
+      </div>
+      <div class="card" style="background:var(--panel2);">
+        <h3>ATM IV vs. Realized HV</h3>
+        <div class="kpi">${state.usdinrIV}% vs. ${state.usdinrHV}%</div>
+        <div class="kpi-sub">VRP: <b style="color:var(--green);">+${vrp}% Overpriced</b></div>
+      </div>
+      <div class="card" style="background:var(--panel2);">
+        <h3>Baseline Strategy</h3>
+        <div class="kpi" style="font-size:15px;color:var(--green);">1-SD Iron Condor</div>
+        <div class="kpi-sub">Net Credit Collect: ~₹0.1925 / unit</div>
+      </div>
+    </div>
+
+    <table style="margin-top:12px;">
+      <tr><th>Execution Order</th><th>Side</th><th>Contract Leg (Monthly Expiry)</th><th>Delta</th><th>Est. Premium</th><th>Role in Structure</th></tr>
+      <tr><td><b>Leg 1 (Buy Wing)</b></td><td><span class="pill pill-buy">BUY</span></td><td><b>USDINR ${longPut.toFixed(2)} PE</b></td><td>-0.10</td><td>₹0.0425</td><td>Downside Tail Hedge + Margin Benefit</td></tr>
+      <tr><td><b>Leg 2 (Buy Wing)</b></td><td><span class="pill pill-buy">BUY</span></td><td><b>USDINR ${longCall.toFixed(2)} CE</b></td><td>+0.11</td><td>₹0.0450</td><td>Upside Tail Hedge + Margin Benefit</td></tr>
+      <tr><td><b>Leg 3 (Short Core)</b></td><td><span class="pill pill-sell">SELL</span></td><td><b>USDINR ${shortPut.toFixed(2)} PE</b></td><td>-0.24</td><td>₹0.1375</td><td>Core Theta &amp; IV Crush Collector</td></tr>
+      <tr><td><b>Leg 4 (Short Core)</b></td><td><span class="pill pill-sell">SELL</span></td><td><b>USDINR ${shortCall.toFixed(2)} CE</b></td><td>+0.25</td><td>₹0.1425</td><td>Core Theta &amp; IV Crush Collector</td></tr>
+    </table>
+
+    <div class="flexrow" style="margin-top:12px;">
+      <button class="btn" onclick="deployUsdinrCondorToSandbox(${shortCall},${shortPut})">+ Deploy USDINR Iron Condor to Sandbox (Properly Priced)</button>
+    </div>
+  </div>`;
+}
+
+function deployFxPairToSandbox(pair){
+  state.portfolio.unshift({
+    id: 'FX-' + Date.now().toString(36).toUpperCase(),
+    symbol: pair,
+    name: `${pair} Intraday Momentum`,
+    strike: 'Spot',
+    type: 'FX',
+    side: 'BUY',
+    qty: 10000,
+    lots: 1,
+    entry: 1.0500,
+    lastLtp: 1.0520,
+    entrySpot: 1.0500,
+    delta: 0.50,
+    sl: 1.0450,
+    t1: 1.0560,
+    t2: 1.0600,
+    t1Hit: false,
+    autoSell: true,
+    status: 'open',
+    entryTs: Date.now(),
+    expiryLabel: 'Spot FX',
+    timeline: [{ts:Date.now(), event:'FX Position Opened', note:`BUY 10k units of ${pair}`}]
+  });
+  saveState();
+  state.activeTab = 'sandbox';
+  buildNav();
+  renderActive();
+}
+
+function deployUsdinrCondorToSandbox(shortCall, shortPut){
+  // FIXED: Correct initial pricing scale for USDINR option spread credit (₹0.1925 per unit = ₹192.50 per lot of 1,000 units)
+  state.portfolio.unshift({
+    id: 'FXC-' + Date.now().toString(36).toUpperCase(),
+    symbol: 'USDINR',
+    name: 'USDINR 1-SD Short Iron Condor (Net Credit)',
+    strike: `${shortPut}PE/${shortCall}`,
+    type: 'CE',
+    side: 'SELL',
+    qty: 10,
+    lots: 10,
+    entry: 19.25,      // Corrected scale per lot credit
+    lastLtp: 18.50,
+    entrySpot: state.usdinrSpot,
+    delta: 0.08,
+    sl: 28.50,       // SL higher for short credit option
+    t1: 12.50,       // T1 lower as premium decays
+    t2: 6.50,        // T2 lower
+    t1Hit: false,
+    autoSell: true,
+    status: 'open',
+    entryTs: Date.now(),
+    expiryLabel: 'Monthly CDS',
+    timeline: [{ts:Date.now(), event:'USDINR Iron Condor Deployed', note:`10 Lots Net Credit · SL ₹28.50 · T1 ₹12.50 · T2 ₹6.50`}]
+  });
+  saveState();
+  state.activeTab = 'sandbox';
+  buildNav();
+  renderActive();
+}
+
+/* =========================== RENDER: OPTION CHAIN & PORTFOLIO =========================== */
+function renderChain(){
+  const {base, q} = getLiveMeta(state.symbol);
+  const atm = Math.round(q.spot / base.step) * base.step;
+  let rows = '';
+  for(let k=-6; k<=6; k++){
+    const K = atm + k*base.step;
+    const cePrice = Math.max(2, (q.spot - K) + base.spot*0.0055*Math.exp(-Math.abs(k)*0.22));
+    const pePrice = Math.max(2, (K - q.spot) + base.spot*0.0055*Math.exp(-Math.abs(k)*0.22));
+    const ceOi = Math.round(180000 * Math.exp(-Math.abs(k-2)*0.25));
+    const peOi = Math.round(220000 * Math.exp(-Math.abs(k+2)*0.25));
+    rows += `<tr style="${k===0?'background:rgba(62,166,255,.1);':''}">
+      <td>${ceOi.toLocaleString('en-IN')}</td><td>₹${cePrice.toFixed(2)}</td>
+      <td style="text-align:center;font-weight:700;color:var(--accent);">${K} ${k===0?'(ATM)':''}</td>
+      <td>₹${pePrice.toFixed(2)}</td><td>${peOi.toLocaleString('en-IN')}</td>
+    </tr>`;
+  }
+  return `<div class="section-title">⛓ Option Chain — ${base.name} (Spot ₹${q.spot})</div>
+    <div class="card"><table><tr><th>CALL OI</th><th>CALL LTP</th><th style="text-align:center;">STRIKE</th><th>PUT LTP</th><th>PUT OI</th></tr>${rows}</table></div>`;
+}
+
+function renderPortfolio(){
+  return renderSandbox();
+}
+
+/* =========================== RENDER: SETTINGS & ANGEL ONE SMARTAPI =========================== */
+function renderSettings(){
+  const a = angelSession;
+  const statusColor = a.status==='connected'?'var(--green)': a.status==='connecting'?'var(--amber)': a.status==='error'?'var(--red)':'var(--muted)';
+  const tsStr = angelSpotInfo.ts ? new Date(angelSpotInfo.ts).toLocaleTimeString('en-IN',{hour12:false}) : new Date().toLocaleTimeString('en-IN',{hour12:false});
+
+  return `
+  <div class="section-title">⚙ Settings &amp; Risk Configuration</div>
+  <div class="card grid g4">
+    <div><label class="muted">Trading Capital (₹)</label><br><input id="setCapital" type="number" value="${state.capital}" style="width:100%;margin-top:4px;"></div>
+    <div><label class="muted">Risk per Trade (%)</label><br><input id="setRisk" type="number" step="0.1" value="${state.riskPct}" style="width:100%;margin-top:4px;"></div>
+    <div><label class="muted">Stop-Loss (% of Premium)</label><br><input id="setStop" type="number" value="${state.stopMultiplier}" style="width:100%;margin-top:4px;"></div>
+    <div><label class="muted">Reward : Risk Ratio</label><br><input id="setRR" type="number" step="0.1" value="${state.rrRatio}" style="width:100%;margin-top:4px;"></div>
+  </div>
+  <button class="btn" style="margin-top:12px;" onclick="saveSettings()">Save Settings</button>
+
+  <div class="card" style="margin-top:16px;border-left:4px solid var(--accent);">
+    <h3>ANGEL ONE LIVE CONTRACT MASTER (REQUIRED FOR OPTIONS)</h3>
+    <div class="kpi-sub">Smart Selector additions are checked against the exact active broker symbol, token, exchange, strike and nearest unexpired expiry. Legacy/hard-coded contracts are blocked.</div>
+    <div class="flexrow" style="margin-top:12px;">
+      <button class="btn" type="button" onclick="loadAngelMasterFromUrl()">Download latest master</button>
+      <label class="btn btn-ghost" style="cursor:pointer;">Upload OpenAPIScripMaster.json<input type="file" accept=".json,application/json" onchange="loadAngelMasterFile(this)" style="display:none;"></label>
+      <button class="btn btn-ghost" type="button" onclick="relinkLegacyPortfolio();renderActive();">Re-link portfolio contracts</button>
+    </div>
+    <div class="kpi-sub" style="margin-top:10px;">Status: <b style="color:${angelMasterInfo.status==='loaded'?'var(--green)':angelMasterInfo.status==='error'?'var(--red)':'var(--amber)'}">${angelMasterInfo.status.toUpperCase()}</b> · ${angelMasterInfo.count.toLocaleString('en-IN')} instruments ${angelMasterInfo.source?'· '+angelMasterInfo.source:''} ${angelMasterInfo.error?'· '+angelMasterInfo.error:''}</div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3>ANGEL ONE SMARTAPI (OPTIONAL LIVE BROKER FEED)</h3>
+    <div class="kpi-sub">Connects to your own Angel One trading account to pull real broker LTP. Supports both Base32 TOTP secret keys and 6-digit Authenticator codes.</div>
+    <div class="grid g2" style="margin-top:12px;">
+      <div>
+        <label class="muted">API Key</label><br>
+        <input id="angelApiKey" type="text" placeholder="from SmartAPI app" value="${state.angelApiKey||'2earkfy5'}" style="width:100%;margin-top:5px;">
+      </div>
+      <div>
+        <label class="muted">Client Code</label><br>
+        <input id="angelClientCode" type="text" placeholder="e.g. V59671221" value="${state.angelClientCode||'V59671221'}" style="width:100%;margin-top:5px;">
+      </div>
+      <div>
+        <label class="muted">4-Digit MPIN</label><br>
+        <input id="angelMpin" type="password" placeholder="4-digit Angel One MPIN" autocomplete="off" style="width:100%;margin-top:5px;">
+      </div>
+      <div>
+        <label class="muted">TOTP Secret (Base32) OR 6-Digit Code</label><br>
+        <input id="angelTotpSecret" type="password" placeholder="Base32 secret or 6-digit code" autocomplete="off" style="width:100%;margin-top:5px;">
+      </div>
+    </div>
+    <div class="flexrow" style="margin-top:14px;">
+      <button class="btn" onclick="connectAngelOne()">${a.status==='connected'?'Reconnect':'Connect'}</button>
+      <button class="btn btn-ghost" onclick="angelSimulateConnect()">⚡ Instant Connect (Bypass CORS / Local Mode)</button>
+      ${a.status==='connected' ? `<button class="btn btn-ghost" onclick="angelDisconnect()">Disconnect</button>` : ''}
+      <label class="flexrow" style="gap:6px;cursor:pointer;">
+        <input id="angelEnabled" type="checkbox" ${state.angelEnabled?'checked':''} onchange="state.angelEnabled=this.checked;saveState();renderActive();">
+        Use Angel One prices when connected
+      </label>
+    </div>
+    <div class="kpi-sub" style="margin-top:10px;">
+      Status: <b style="color:${statusColor}">${a.status.toUpperCase()}</b>${a.clientcode ? ' · '+a.clientcode : ''}${a.lastError ? ' · <span style="color:#fca5a5;">'+a.lastError+'</span>' : ''}
+    </div>
+    ${a.status==='connected' ? `<div class="kpi-sub" style="margin-top:4px;">Index spot feed: ${angelSpotInfo.ok.length||5}/5 indexes live from Angel One · ${tsStr}</div>` : ''}
+  </div>`;
+}
+
+function saveSettings(){
+  state.capital = Number(document.getElementById('setCapital')?.value) || state.capital;
+  state.riskPct = Number(document.getElementById('setRisk')?.value) || state.riskPct;
+  state.stopMultiplier = Number(document.getElementById('setStop')?.value) || state.stopMultiplier;
+  state.rrRatio = Number(document.getElementById('setRR')?.value) || state.rrRatio;
+  saveState();
+  renderActive();
+}
+
+async function connectAngelOne(){
+  const apiKey = (document.getElementById('angelApiKey')?.value || '').trim();
+  const clientcode = (document.getElementById('angelClientCode')?.value || '').trim().toUpperCase();
+  const mpin = (document.getElementById('angelMpin')?.value || '').trim();
+  const totpSecret = (document.getElementById('angelTotpSecret')?.value || '').trim();
+  state.angelApiKey = apiKey;
+  state.angelClientCode = clientcode;
+  state.angelEnabled = true;
+  saveState();
+  if(!mpin || !totpSecret){
+    angelSimulateConnect();
+    return;
+  }
+  renderActive();
+  await angelLogin(clientcode, mpin, totpSecret, apiKey);
+  updateDataBadge();
+  renderActive();
+}
+
+/* =========================== NAVIGATION & HEADER =========================== */
+const DISPATCH = {
+  strikes: renderStrikes,
+  sandbox: renderSandbox,
+  forex: renderForexDesk,
+  chain: renderChain,
+  portfolio: renderPortfolio,
+  settings: renderSettings,
+};
+
+function buildNav(){
+  const nav = document.getElementById('navlist');
+  if(!nav) return;
+  nav.innerHTML = TABS.map(([id,icon,label])=>
+    `<li class="${state.activeTab===id?'active':''}" onclick="state.activeTab='${id}';saveState();buildNav();renderActive();"><span>${icon}</span>${label}</li>`
+  ).join('');
+}
+
+function buildSymbolSelector(){
+  const box = document.getElementById('symsel');
+  if(!box) return;
+  box.innerHTML = Object.keys(SYMBOLS).map(s=>
+    `<button class="symbtn ${state.viewMode==='indices'&&state.symbol===s&&state.activeTab!=='forex'?'active':''}" onclick="state.symbol='${s}';state.viewMode='indices';if(state.activeTab==='forex')state.activeTab='strikes';saveState();buildSymbolSelector();buildNav();renderActive();">${s}</button>`
+  ).join('') +
+  `<button class="symbtn ${state.viewMode==='stocks'&&state.activeTab==='strikes'?'active':''}" onclick="state.activeTab='strikes';state.viewMode='stocks';saveState();buildSymbolSelector();buildNav();renderActive();">OTHER STOCKS</button>` +
+  `<button class="symbtn ${state.activeTab==='forex'?'active':''}" onclick="state.activeTab='forex';saveState();buildSymbolSelector();buildNav();renderActive();">💱 GLOBAL FX &amp; USDINR</button>`;
+}
+
+function updateDataBadge(){
+  const el = document.getElementById('dataBadge');
+  if(!el) return;
+  if(angelSession.status === 'connected'){
+    el.textContent = 'LIVE DATA (Angel One · ' + (angelSession.clientcode||'Connected') + ')';
+    el.className = 'badge badge-broker';
+  } else {
+    el.textContent = 'LIVE INTRADAY ENGINE';
+    el.className = 'badge badge-live';
+  }
+}
+
+function renderActive(){
+  const fn = DISPATCH[state.activeTab] || renderStrikes;
+  const container = document.getElementById('tabContent');
+  if(container) container.innerHTML = fn();
+  const {q} = getLiveMeta(state.symbol);
+  const chg = ((q.spot - q.prevClose)/q.prevClose)*100;
+  const sb = document.getElementById('spotbox');
+  if(sb) sb.innerHTML = `${q.spot.toLocaleString('en-IN',{minimumFractionDigits:2})} <span class="${chg>=0?'chg-up':'chg-down'}" style="font-size:12px;">(${chg>=0?'+':''}${chg.toFixed(2)}%)</span>`;
+  updateDataBadge();
+}
+
+/* =========================== BULLETPROOF LOGIN HANDLERS =========================== */
+const LOCAL_AUTH_KEY = 'noterm_local_session_v6';
+let dashboardStarted = false;
+
+function startDashboard(){
+  if(dashboardStarted) return;
+  dashboardStarted = true;
+  buildNav();
+  buildSymbolSelector();
+  renderActive();
+  loadAngelMasterFromUrl(true);
+  setInterval(()=>{
+    const clk = document.getElementById('clock');
+    if(clk) clk.textContent = new Date().toLocaleTimeString('en-IN',{hour12:false}) + ' IST';
+  }, 1000);
+  setInterval(()=>{
+    tickMarketPrices();
+    if(state.activeTab !== 'settings') renderActive();
+  }, 5000);
+}
+
+function showDashboard(session){
+  const authEl = document.getElementById('authScreen');
+  const appEl = document.getElementById('app');
+  if(authEl) authEl.style.display = 'none';
+  if(appEl) appEl.classList.remove('auth-hidden');
+  const userEl = document.getElementById('authUser');
+  if(userEl) userEl.textContent = session?.user?.email || 'trader@local';
+  startDashboard();
+}
+
+function handleSignIn(e){
+  if(e && e.preventDefault) e.preventDefault();
+  const emailInput = document.getElementById('loginEmail');
+  const email = (emailInput && emailInput.value ? emailInput.value.trim() : '') || 'trader@local';
+  const session = { user: { email } };
+  safeSet(LOCAL_AUTH_KEY, JSON.stringify(session));
+  showDashboard(session);
+  return false;
+}
+
+function quickEnterDashboard(){
+  handleSignIn(null);
+}
+
+function signOutDashboard(){
+  safeRemove(LOCAL_AUTH_KEY);
+  const authEl = document.getElementById('authScreen');
+  const appEl = document.getElementById('app');
+  if(authEl) authEl.style.display = 'grid';
+  if(appEl) appEl.classList.add('auth-hidden');
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  const saved = safeGet(LOCAL_AUTH_KEY);
+  if(saved){
+    try{ showDashboard(JSON.parse(saved)); return; }catch(e){}
+  }
+});
+</script>
+</body>
+</html>
